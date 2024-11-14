@@ -1,10 +1,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
+	"os"
+	"os/signal"
 	"studentapi/internal/config"
+	"syscall"
+	"time"
 )
 
 func main() {
@@ -25,12 +31,39 @@ func main() {
 		Handler: router,
 	}
 
+	slog.Info("starting server", slog.String("address", cfg.Addr))
+	fmt.Println("server started on", cfg.Addr)
+
+
+	done := make(chan os.Signal,1)
+
+
+	signal.Notify(done,os.Interrupt,syscall.SIGINT,syscall.SIGTERM)
+
+	go func(){
 	err := server.ListenAndServe()
 
 	if err != nil {
 		log.Fatalf("failed to start server: %v", err.Error)
 		
 	}
+	} ()
 
-	fmt.Println("server started on", cfg.Addr)
+	<-done
+
+	slog.Info("shutting down server")
+
+	ctx,cancel := context.WithTimeout(context.Background(),5 * time.Second)
+
+	defer cancel()
+
+	err :=server.Shutdown(ctx)
+
+	if err != nil {
+		slog.Error("failed to shutdown server:", slog.String("error", err.Error()))
+	}
+
+	slog.Info("server shutdown")
+
+	
 }
