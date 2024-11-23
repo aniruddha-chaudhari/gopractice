@@ -32,9 +32,11 @@ func New() http.HandlerFunc {
 
 		//validate the student
 		if err := validator.New().Struct(student); err != nil {
-			response.WriteJson(w, http.StatusBadRequest, response.GenralError(fmt.Errorf("failed to validate student")))
+			validateErrs := err.(validator.ValidationErrors)
+			response.WriteJson(w, http.StatusBadRequest, response.ValidationError(validateErrs))
+			return
 		}
-
+		
 		slog.Info("new student request")
 
 		response.WriteJson(w, http.StatusCreated, map[string]string{"message": "student created"})
